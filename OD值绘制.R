@@ -1,8 +1,5 @@
-##系统报错改为英文
 Sys.setenv(LANGUAGE = "en")
-##禁止转化为因子
 options(stringsAsFactors = FALSE)
-##清空环境
 rm(list=ls())
 library(readxl)
 library(tidyverse)
