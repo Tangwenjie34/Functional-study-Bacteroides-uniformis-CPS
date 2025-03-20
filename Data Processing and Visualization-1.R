@@ -1,5 +1,4 @@
-####Data Processing and Visualization for 
-####Figure 1 and its related supplementary figures
+####Data Processing and Visualization
 Sys.setenv(LANGUAGE = "en")
 options(stringsAsFactors = FALSE)
 rm(list=ls())
