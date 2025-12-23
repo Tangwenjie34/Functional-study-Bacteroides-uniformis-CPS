@@ -9,6 +9,7 @@ library(ggrepel)
 library(patchwork)
 library(ggsankey)
 library(gggenes)
+library(rstatix)
 
 setwd("/report")
 diff_expr_genes <- read.csv("diff_expr_genes.csv")
@@ -215,52 +216,21 @@ ggplot(b,aes(group,capsule,fill=group))+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.25,size=0.25)+
   scale_fill_manual(values = c("grey","#5cc3e8","#5cc3e8","#5cc3e8","#e95f5c","#e95f5c"))+theme_classic()+
   scale_y_continuous(limits = c(0,250))+
-  stat_compare_means(comparisons = list(c("CON","BU1"), c("BU1","BU4"), c("BU5","BU4")) ,
-                     method = "wilcox.test",label = "p.signif")
-a <- read.csv("BU1-5-IgA-coating.csv", row.names=1)
-group_names <- c( "PECCON","PECBU1",  "PECBU2", "PECBU3","PECBU4", "PECBU5",
-                  "NOPECCON", "NOPECBU1", "NOPECBU2", "NOPECBU3", "NOPECBU4","NOPECBU5")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA_coating))+
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0,pch=21)+
-  stat_compare_means(comparisons = list(c("PECCON","PECBU1"), c("PECBU1","PECBU4")) ,
-                     method = "wilcox.test",label = "p.signif")+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  stat_compare_means(method="anova")+
-  scale_fill_manual(values = c(
-    "grey","#5cc3e8","#5cc3e8","#5cc3e8","#e95f5c","#e95f5c","grey","#5cc3e8","#5cc3e8","#5cc3e8",
-          "#e95f5c","#e95f5c"))+
-            theme(axis.text.x=element_text(angle=30,vjust=1, hjust=1))+
-  scale_y_continuous(limits = c(0, 30), breaks = seq(0,30, 5))+
-  facet_wrap( ~PEC, scales = 'free_x', ncol = 5)
+kruskal_result <- kruskal.test(capsule ~ group, data = b)
+print(kruskal_result)
+dunn_result <- b %>%
+  dunn_test(capsule ~ group, 
+            p.adjust.method = "bonferroni")  
+print(dunn_result)
 
-m3h.g3 <-read.delim("./OD-VALUE.txt",header = T,row.names= 1)
-m3h.g3 %>% rowwise() %>% 
-  mutate(mean_value=mean(c_across(rep1:rep5)),std_value=sd(c_across(rep1:rep5))) %>% 
-  filter(Weeks>=1)-> new.dat
-colnames(new.dat)[8]<-"OD600"
-ggplot(new.dat,aes(x=Weeks,y=OD600))+
-  geom_point(aes(color=group),size=0.71)+
-  geom_line(aes(color=group),size=0.71)+
-  geom_errorbar(aes(ymin=OD600-std_value,
-                    ymax=OD600+std_value,
-                    color=group),
-                width=0.32,
-                size=0.35)+
-  facet_wrap( ~ group, scales = 'free_x', ncol = 5)+
-  scale_y_continuous(limits = c(0,1))+
-  scale_x_continuous(limits = c(0,72),
-                     breaks = seq(0,72,12))+
-  scale_color_manual(values = c("BU-1"="#f68a15",
-                                "BU-2"="#008c00",
-                                "BU-3"="#094cc3",
-                                "BU-4"="#784cc3",
-                                "BU-5"="#784c23",
-                                "Type II mucin"="#22cac3",
-                                "Inulin"="#ba3a15",
-                                "Laminarin"="#AABC15",
-                                "A_Carbon(NO)"="#C19995",
-                                "Agarose"="#D97775",
-                                "Amylopectin"="#D33775","AStarch"="#344775","Dextran"="#127775"))
+c <- read.csv("./CAPSULE-THICKNESS_1.csv", row.names=1)
+group_names <- c( "WT","rcsC")
+c$group <- factor( c$group, level=group_names )
+ggplot(c,aes(group,capsule,fill=group))+
+  geom_beeswarm(cex = 2.5, show.legend = FALSE,pch=21,size=3)+
+  stat_summary(fun=mean,fun.ymin=mean,fun.ymax=mean,geom='crossbar',width=0.3,size=0.5,color='black')+
+  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.2)+
+  scale_fill_manual(values = c("grey","#5cc3e8"))+theme_classic()+
+  scale_y_continuous(limits = c(0,200))
+wilcox_result <- wilcox.test(capsule ~ group, data = c)
+print(wilcox_result)
