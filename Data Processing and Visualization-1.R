@@ -35,13 +35,11 @@ ggplot(a,aes(Cage.group,IgA))+
   facet_wrap( ~group, scales = 'free_x', ncol = 3)
 
 group_names <- c( "Con","IgA-High",  "IgA-Low")
-comparisons <- combn(group_names, 2, simplify = FALSE)
 ggplot(a,aes(group,IgA))+ 
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=group),pch=21,stroke=0.1,alpha=1,size=3,
               width = 0.1, height = 0)+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  stat_compare_means(comparisons = comparisons, method = "wilcox.test",label = "p.signif")+
   scale_fill_manual(values = c( "grey","#5cc3e8","#e95f5c"))+
   theme(axis.text.x=element_text(angle=30,vjust=1, hjust=1))+
   theme_prism(base_fontface = "plain", 
@@ -49,18 +47,20 @@ ggplot(a,aes(group,IgA))+
               base_size = 12,
               base_line_size = 0.25, 
               axis_text_angle = 0) 
+anova_result <- aov(IgA ~ group, data = a)
+summary(anova_result)
+tukey_result <- TukeyHSD(anova_result)
+print(tukey_result)
+
 
 a <- read.csv("./Elisa-data.csv", row.names=1)
 data<-subset(a,a$IgA.Coating!="NA") 
 group_names <- c( "Con","IgA-High",  "IgA-Low")
-comparisons <- combn(group_names, 2, simplify = FALSE) 
 ggplot(data,aes(group,IgA.Coating))+ 
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=group),stroke=0,alpha=1,size=3,
               width = 0.1, height = 0,pch=21)+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  stat_compare_means(comparisons = comparisons, method = "wilcox.test",label = "p.signif")+
-  stat_compare_means(method="anova")+
   scale_fill_manual(values = c( "grey","#5cc3e8", "#e95f5c","#ffdb00","#79ceb8"))+
   scale_y_continuous(limits = c(0, 40), breaks = seq(5,30, 5))+
   theme_prism(palette = "candy_bright",
@@ -69,6 +69,10 @@ ggplot(data,aes(group,IgA.Coating))+
               base_size = 16, 
               base_line_size = 0.25, 
               axis_text_angle = 45) 
+anova_result <- aov(IgA.Coating ~ group, data = data)
+summary(anova_result)
+tukey_result <- TukeyHSD(anova_result)
+print(tukey_result)
 
 a <- read.csv("Elisa-data1.csv", row.names=1)
 data<-subset(a,a$IgA.cohusing!="NA") 
@@ -86,14 +90,13 @@ ggplot(data,aes(group.cohousing,IgA.cohusing,fill=group.cohousing))+
   geom_jitter(shape=21,stroke=0.1,alpha=1,size=2.5,
               width = 0.1, height = 0,color="black")+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  geom_signif(comparisons = list(c("IgA-Low-Initial","IgA-Low-post"),
-                                 c("IgA-High-post","IgA-Low-post")),
-              map_signif_level = T,
-              test = "wilcox.test", 
-              y_position = c(500,520,550,570),
-              size=0.8,color="black")+
   scale_y_continuous(limits = c(0, 600), breaks = seq(0, 600, 100)) +
   facet_wrap( ~regroup.cohousing, scales = 'free_x')
+post_data <- data %>%
+  filter(group == "IgA-Low")
+t_test_result <- t.test(IgA.cohusing ~ regroup.cohousing, data = post_data)
+print(t_test_result)
+
 
 a <- read.csv("./SI-Colon-Elisa-data.csv", row.names=1)
 group_names <- c( "IgA-High","IgA-Low")
@@ -107,7 +110,7 @@ ggplot(a,aes(group,IgA,fill=group))+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
   geom_signif(comparisons = list(c("IgA-Low","IgA-High")),
               map_signif_level = T,
-              test = "wilcox.test", 
+              test = "t.test", 
               y_position = c(450),
               size=0.25,color="black")+
   scale_y_continuous(limits = c(0, 500), breaks = seq(0, 500, 100)) +
@@ -116,14 +119,12 @@ ggplot(a,aes(group,IgA,fill=group))+
 a <- read.csv("./Elisa-allbacterialtest.csv", row.names=1)
 group_names <- c( "Con","B.uniformis",  "B.ovatus", "B.xylanisolvens","B.faecis", "B.intestinalis", "B.caccae",
                   "B.vulgatus", "P.copri", "P.intermedia", "P.mirabilis", "F.varium")
-comparisons <- lapply(group_names[-13], function(group) c(group, "B.uniformis"))
 a$group <- factor( a$group, level=group_names )
 ggplot(a,aes(group,IgA))+
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=group),pch=21,alpha=1,size=2.5,
               width = 0.1, height = 0)+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  stat_compare_means(comparisons = comparisons, method = "wilcox.test",label = "p.signif")+
   scale_fill_manual(values = c(
     "grey","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
           "#e95f5c","#e95f5c","#ffdb00","#79ceb8"))+
@@ -133,14 +134,11 @@ a <- read.csv("Iga-coating.csv", row.names=1)
 group_names <- c( "Con","B.uniformis",  "B.ovatus", "B.xylanisolvens","B.faecis", "B.intestinalis", "B.caccae",
                   "B.vulgatus", "P.copri", "P.intermedia", "P.mirabilis", "F.varium")
 a$group <- factor( a$group, level=group_names )
-comparisons <- lapply(group_names[-13], function(group) c(group, "B.uniformis"))
 ggplot(a,aes(group,IgA_coating))+ 
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=group),shape=21,stroke=0.1,alpha=1,size=2.5,
               width = 0.1, height = 0)+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  stat_compare_means(comparisons = comparisons, method = "wilcox.test",label = "p.signif")+
-  stat_compare_means(method="anova")+
   scale_fill_manual(values = c(
     "grey","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
           "#e95f5c","#e95f5c","#ffdb00","#79ceb8"))+
@@ -158,15 +156,11 @@ c <- read.csv("./Elisa-data3.csv", row.names=1)
 c <- subset(c, c$Group1 %in% c("Con_1","PEC+BU_1" ,  "NOPEC+BU_1"))
 group_names <- c( "Con","PEC+BU" ,  "NOPEC+BU")
 c$Group <- factor(c$Group, level=group_names )
-comparisons <- combn(group_names, 2, simplify = FALSE)
-
 ggplot(c,aes(Group,IgA_coating))+ 
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=Group),shape=21,stroke=0.1,alpha=1,size=2.5,
               width = 0.1, height = 0)+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  stat_compare_means(comparisons = comparisons, method = "wilcox.test",label = "p.signif")+
-  stat_compare_means(method="anova")+
   scale_fill_manual(values = c(
     "grey", "#5cc3e8", "#e95f5c","#ffdb00","#79ceb8"))+
   scale_y_continuous(limits = c(0, 40), breaks = seq(0,30, 5))+
@@ -179,7 +173,6 @@ ggplot(c,aes(Group,IgA_coating))+
 
 b <- read.csv("./Elisa-data5.csv", row.names=1)
 group_names <- c( "CON",  "PEC", "Starch","XYL","Inulin")
-comparisons <- lapply(group_names[-12], function(group) c(group, "CON"))
 b$Group <- factor(b$Group, level=group_names )
 
 topbar <- function(x){
@@ -222,6 +215,5 @@ ggplot(c,aes(week,IgA,color=Group))+
   scale_x_continuous(limits = c(1, 7.5), breaks = seq(1, 7, 1)) +
   scale_color_manual(values = c("grey", "#5cc3e8","#3b8000","#0151b8", "#e95f5c","#ffdb00","#79ceb8"))+
   scale_fill_manual(values = c("grey", "#5cc3e8", "#3b8000","#0151b8","#e95f5c","#ffdb00","#79ceb8"))+  
-  theme() +
-  annotate(geom = 'text',label='***',x=6.5,y=342,size=4,angle=90)+
-  annotate(geom = 'text',label='****',x=6.8,y=312,size=4,angle=90)
+  theme() 
+
