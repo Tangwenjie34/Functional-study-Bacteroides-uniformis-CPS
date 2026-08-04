@@ -72,16 +72,4 @@ ggplot(a,aes(group,score,fill=group))+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
   scale_y_continuous(limits = c(0, 15), breaks = seq(0, 15, 2)) 
 
-a <- read.csv("./Elisa.csv", row.names=1)
-group_names <- c( "CON-PBS","CON-WT",  "CON-rcsC", "LY6G-PBS","LY6G-WT", "LY6G-rcsC")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA))+
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),pch=21,alpha=1,size=2.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c(
-  "grey","grey","grey","#5cc3e8","#5cc3e8","#5cc3e8"))+
-   theme_classic()+
-  scale_y_continuous(limits = c(0, 600), breaks = seq(0, 600, 100))
 
