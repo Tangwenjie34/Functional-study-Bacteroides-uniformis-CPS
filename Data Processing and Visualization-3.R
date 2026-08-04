@@ -15,8 +15,7 @@ library(reshape2)
 library(ggprism)
 library(ggbeeswarm)
 library(patchwork)
-
-
+library(ggmsa)
 
 m3h.g2 <-read.delim("./ODVALUE.txt",header = T,row.names= 1)
 m3h.g2 %>% rowwise() %>% 
@@ -58,55 +57,6 @@ ggplot(new.dat,aes(x=Weeks,y=OD600))+
                      breaks = seq(0,72,12))+
   scale_color_manual(values = c("WT"="grey","rcsC"="#5cc3e8"))
 
-c <- read.csv("./IgA-Elisa.csv", row.names=1)
-group_names <- c( "Con","WT", "rcsC" )
-c$Group <- factor(c$Group, level=group_names )
-
-topbar <- function(x){
-  return(mean(x)+sd(x)/sqrt(length(x))) #mean+-sem
-}
-bottombar <- function(x){
-  return(mean(x)-sd(x)/sqrt(length(x)))
-}
-
-ggplot(c,aes(week,IgA,color=Group))+
-  stat_summary(geom = 'line',fun='mean',cex=1)+
-  stat_summary(geom = 'errorbar',
-               fun.min = bottombar,fun.max = topbar,
-               width=0.12,cex=0.8,aes(color=Group))+
-  stat_summary(geom = 'point',fun='mean',aes(fill=Group),
-               size=2.5,pch=21,color='black')+
-  scale_y_continuous(limits = c(25, 250), breaks = seq(0, 250, 50))+
-  scale_x_continuous(limits = c(5, 25), breaks = seq(5, 25, 5)) +
-  scale_color_manual(values = c("#ffdb00","grey", "#5cc3e8"))+
-  scale_fill_manual(values = c("#ffdb00","grey", "#5cc3e8"))+ 
-  theme() 
-                     
- a <- read.csv("./Iga-coating.csv", row.names=1)
-group_names <- c( "WT","rcsC")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA_coating))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),shape=21,stroke=0.1,alpha=1,size=2,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c(
-    "grey","#5cc3e8"))+
-  theme_classic()+
-  scale_y_continuous(limits = c(0, 22), breaks = seq(0,20, 5))
-
-a <- read.csv("./Iga-coating_1.csv", row.names=1)
-group_names <- c("HP-WT","HP-rcsC" , "LP-WT", "LP-rcsC")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA_coating))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),shape=21,stroke=0.1,alpha=1,size=1.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c("grey","#5cc3e8","grey","#5cc3e8"))+
-  theme_classic()+
-  scale_y_continuous(limits = c(0,40), breaks = seq(0,25, 5))
-
 a <- read.csv("IgA-LPMC.csv", row.names=1)
 group_names <- c("LPMC-SPF-WT","LPMC-SPF-rcsC" , "LPMC-GF-WT", "LPMC-GF-rcsC")
 a$group <- factor( a$group, level=group_names )
@@ -117,4 +67,25 @@ ggplot(a,aes(group,IgA_coating))+
   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
   scale_fill_manual(values = c("grey","#5cc3e8","grey","#5cc3e8"))+
   theme_classic()+
-  scale_y_continuous(limits = c(0,15), breaks = seq(0,15, 3))                   
+  scale_y_continuous(limits = c(0,15), breaks = seq(0,15, 3))    
+
+gene_expression_matrix <- read.csv("./IMGT-results/output.csv", row.names=1)
+bk <- c(seq(0,100,by=1))
+pheatmap(gene_expression_matrix, cluster_rows=F, cluster_cols=F,
+         show_rownames=T, show_colnames=TRUE, 
+         color=colorRampPalette(c("#dae9fe", "#da6b53", "firebrick3"))(length(bk)),
+         breaks = bk)
+                     
+a <-read.delim("AA-sequences.txt",header = T)
+   new_a <- a[, c(1:4,15)]
+   subset_new_a <- subset(new_a, new_a[,4] == "Musmus IGHV1-53*01 F")
+   subset_a <- subset(a, a[,4] == "Musmus IGHV1-53*01 F")
+   df1 <- unite( subset_a, "seq", 11:15, sep = " ", remove = FALSE) 
+   df1$seq_length <- nchar(as.character(df1$seq))# 生成FASTA内容
+   fasta_lines <- paste0(">", df1$Sequence.number, "\n", df1$seq)# 写入fasta文件 # writeLines(fasta_lines, "./output.fasta")
+   ggmsa("D:/rpackages/library/ggmsa/extdata/output_merge.fasta", 
+   1, 84, seq_name = TRUE, 
+   char_width = 0.5,
+   by_conservation = F) + 
+   geom_seqlogo(color = "Chemistry_AA") + 
+   geom_msaBar()
