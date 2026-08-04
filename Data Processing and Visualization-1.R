@@ -1,6 +1,9 @@
 ####Data Processing and Visualization 
+##系统报错改为英文
 Sys.setenv(LANGUAGE = "en")
+##禁止转化为因子
 options(stringsAsFactors = FALSE)
+##清空环境
 rm(list=ls())
 library(readxl)
 library(tidyverse)
@@ -15,173 +18,150 @@ library(reshape2)
 library(ggprism)
 library(ggbeeswarm)
 library(patchwork)
+library(ggrepel)
+library(RColorBrewer)
+library(viridis)
 
-a <- read.csv("./data.csv", row.names=1)
-ggplot(a,aes(Cage.group,IgA))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=Cage.group),pch=21,stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  scale_fill_manual(values = c("grey","grey","grey","grey","grey",
-                                     "#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
-                                     "#e95f5c", "#e95f5c", "#e95f5c", "#e95f5c", "#e95f5c"))+
-                                       scale_y_continuous(limits = c(0, 500), breaks = seq(0, 500, 100))+
-  theme_prism(palette = "candy_bright",
-              base_fontface = "plain",
-              base_family = "serif", 
-              base_size = 16,  
-              base_line_size = 0.25, 
-              axis_text_angle = 45)+ 
+a <- read.csv("./data1.csv", row.names=1)
+df_subset <- a[,c("X47", "X54","X61","X98","X119", "taxonomy") ]
+df_subset$taxonomy[is.na(df_subset$taxonomy) | df_subset$taxonomy == ""] <- "other"
+df_summary <- df_subset %>%
+  group_by(taxonomy) %>%
+  summarise(
+    X47 = sum(X47, na.rm = TRUE),
+    X54 = sum(X54, na.rm = TRUE),
+    X61 = sum(X61, na.rm = TRUE),
+    X98 = sum(X98, na.rm = TRUE),
+    X119 = sum(X119, na.rm = TRUE)
+  ) %>%
+  ungroup()
+df_percent <- df_summary %>%
+  mutate(across(c(X47, X54, X61, X98, X119), 
+                ~ . / sum(., na.rm = TRUE) * 100,
+                .names = "{.col}_percent"))
+write.csv(df_percent, "df_percent.csv")
+b <- read.csv("./df_percent.csv", row.names=1)
+ pie(b$FMTP_A, labels = b$taxonomy, main = "FMTP_A") 
+ pie(b$FMT_A,  labels = b$taxonomy,
+          main = "FMT_A") 
+
+taxa_data <- read.csv("./data.csv", header = TRUE, row.names = 1, check.names = FALSE)
+taxa_datat <- data.frame(t(taxa_data))
+taxa_datat$Sample <- rownames(taxa_datat)
+taxa_long <- taxa_datat %>%pivot_longer( cols = -Sample, names_to = "Genus",values_to = "Abundance")
+N <- 5
+top_genera <- taxa_long %>%
+  group_by(Genus) %>%
+  summarise(MeanAbundance = mean(Abundance, na.rm = TRUE)) %>%
+  arrange(desc(MeanAbundance)) %>%
+  slice_head(n = N) %>%
+  pull(Genus)
+taxa_plot <- taxa_long %>%
+  mutate(
+    Genus_plot = ifelse(Genus %in% top_genera, Genus, "Other")
+  ) %>%
+  group_by(Sample, Genus_plot) %>%
+  summarise(
+    Abundance = sum(Abundance, na.rm = TRUE),
+    .groups = "drop" )
+ggplot(taxa_plot, aes(x = Sample, y = Abundance, fill = Genus_plot)) +
+  geom_bar(stat = "identity", position = "fill", width = 0.85) +
+  scale_fill_manual(values = c("g__Bacteroides" = "#b2182b",
+                               "g__Allobaculum" = "#d9d9d9",
+                               "g__Ligilactobacillus" = "#d9d9d9",
+                               "g__norank_f__Muribaculaceae" = "#d9d9d9",
+                               "g__Candidatus_Saccharimonas" = "#d9d9d9",
+                               "Other"="#d9d9d9"), name = "Genus") +
+  theme_classic()+theme(axis.text.x = element_text(angle = 45, hjust = 1,vjust = 1,size = 10))
+
+a <- read.csv("./data1.csv", row.names=1)
+ ggplot(data = a ,mapping = aes( x = IgA, y= IgA.Coating)) + 
+   geom_point(size= 2) +
+   stat_smooth(method = "lm")+ 
+   ggpubr::stat_cor(aes(), label.x =200, label.y = 28)+
+  scale_x_continuous(limits = c(200, 480), breaks = seq(200,480, 100))
+
+a <- read.csv("./data2.csv", row.names=1)
+ ggplot(a,aes(Cage.group,IgA))+ 
+   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
+   geom_jitter(aes(fill=Cage.group),pch=21,stroke=0.1,alpha=1,size=2.5,
+               width = 0.1, height = 0)+
+   stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+#误差棒
+   scale_fill_manual(values = c("grey","grey","grey","grey","grey",
+                                "#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
+                                "#e95f5c", "#e95f5c", "#e95f5c", "#e95f5c", "#e95f5c"))+
+   scale_y_continuous(limits = c(0, 500), breaks = seq(0, 500, 100))+
+   theme_prism(palette = "candy_bright",
+               base_fontface = "plain", # 字体样式，可选 bold, plain, italic
+               base_family = "serif", # 字体格式，可选 serif, sans, mono, Arial等
+               base_size = 16,  # 图形的字体大小
+               base_line_size = 0.25, # 坐标轴的粗细
+               axis_text_angle = 45)+ # 可选值有 0，45，90，270
   facet_wrap( ~group, scales = 'free_x', ncol = 3)
-
 group_names <- c( "Con","IgA-High",  "IgA-Low")
+comparisons <- combn(group_names, 2, simplify = FALSE) #任意两组比较
+
 ggplot(a,aes(group,IgA))+ 
   geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
   geom_jitter(aes(fill=group),pch=21,stroke=0.1,alpha=1,size=3,
               width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
+    stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
   scale_fill_manual(values = c( "grey","#5cc3e8","#e95f5c"))+
-  theme(axis.text.x=element_text(angle=30,vjust=1, hjust=1))+
-  theme_prism(base_fontface = "plain", 
-              base_family = "serif", 
-              base_size = 12,
-              base_line_size = 0.25, 
+            theme(axis.text.x=element_text(angle=30,vjust=1, hjust=1))+
+  theme_prism(base_fontface = "plain", # 字体样式，可选 bold, plain, italic
+              base_family = "serif", # 字体格式，可选 serif, sans, mono, Arial等
+              base_size = 12,  # 图形的字体大小
+              base_line_size = 0.25, # 坐标轴的粗细
               axis_text_angle = 0) 
-anova_result <- aov(IgA ~ group, data = a)
-summary(anova_result)
-tukey_result <- TukeyHSD(anova_result)
-print(tukey_result)
 
 
-a <- read.csv("./Elisa-data.csv", row.names=1)
-data<-subset(a,a$IgA.Coating!="NA") 
-group_names <- c( "Con","IgA-High",  "IgA-Low")
-ggplot(data,aes(group,IgA.Coating))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),stroke=0,alpha=1,size=3,
-              width = 0.1, height = 0,pch=21)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c( "grey","#5cc3e8", "#e95f5c","#ffdb00","#79ceb8"))+
-  scale_y_continuous(limits = c(0, 40), breaks = seq(5,30, 5))+
-  theme_prism(palette = "candy_bright",
-              base_fontface = "plain", 
-              base_family = "serif", 
-              base_size = 16, 
-              base_line_size = 0.25, 
-              axis_text_angle = 45) 
-anova_result <- aov(IgA.Coating ~ group, data = data)
-summary(anova_result)
-tukey_result <- TukeyHSD(anova_result)
-print(tukey_result)
-
-a <- read.csv("Elisa-data1.csv", row.names=1)
-data<-subset(a,a$IgA.cohusing!="NA") 
-group_names <- c( "IgA-High-Initial","IgA-Low-Initial","IgA-High-post","IgA-Low-post")
-data$group.cohousing <- factor(data$group.cohousing,levels = group_names)
-ggplot(data,aes(group.cohousing,IgA.cohusing,fill=group.cohousing))+
-  geom_bar(stat="summary",fun=mean,position="dodge")+ 
-  theme_prism(palette = "candy_bright",
-              base_fontface = "plain",
-              base_family = "serif", 
-              base_size = 16, 
-              base_line_size = 0.5, 
-              axis_text_angle = 45)+
-  scale_fill_manual(values = c("#dedede", "grey","#dedede","grey"))+
-  geom_jitter(shape=21,stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0,color="black")+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  scale_y_continuous(limits = c(0, 600), breaks = seq(0, 600, 100)) +
-  facet_wrap( ~regroup.cohousing, scales = 'free_x')
-post_data <- data %>%
-  filter(group == "IgA-Low")
-t_test_result <- t.test(IgA.cohusing ~ regroup.cohousing, data = post_data)
-print(t_test_result)
+gene_expression_matrix <- read.csv("./data3.csv", row.names=1)
+bk <- c(seq(0,1,by=0.01))
+pheatmap(gene_expression_matrix, scale = "none", cluster_rows=T, cluster_cols=T,
+         show_rownames=T, show_colnames=TRUE, 
+         color=colorRampPalette(c("black", "pink", "firebrick3"))(length(bk)),
+         breaks = bk)
 
 
-a <- read.csv("./SI-Colon-Elisa-data.csv", row.names=1)
-group_names <- c( "IgA-High","IgA-Low")
-a$GI.tract <- factor(a$GI.tract,levels =c("Pro-SI","Distal-SI","Cecum","Pro-colon","Distal-colon"))
-ggplot(a,aes(group,IgA,fill=group))+
-  geom_bar(stat="summary",fun=mean,position="dodge")+
-  theme_classic()+ 
-  scale_fill_manual(values = c("#dedede", "grey","#dedede","grey"))+
-  geom_jitter(shape=21,stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0,color="black")+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  geom_signif(comparisons = list(c("IgA-Low","IgA-High")),
-              map_signif_level = T,
-              test = "t.test", 
-              y_position = c(450),
-              size=0.25,color="black")+
-  scale_y_continuous(limits = c(0, 500), breaks = seq(0, 500, 100)) +
-  facet_wrap( ~GI.tract, scales = 'free_x',ncol = 5)
+m3h.g2 <-read.delim("./Bu.txt",header = T,row.names= 1)
+m3h.g2 %>% rowwise() %>% 
+  mutate(mean_value=mean(c_across(rep1:rep5)),std_value=sd(c_across(rep1:rep5))) %>% 
+  filter(Weeks>=1)-> new.dat
+colnames(new.dat)[8]<-"OD600"
+ggplot(new.dat,aes(x=Weeks,y=OD600))+
+  geom_point(aes(color=group),size=0.71)+
+  geom_line(aes(color=group),size=0.71)+
+  geom_errorbar(aes(ymin=OD600-std_value,
+                    ymax=OD600+std_value,
+                    color=group),
+                width=0.32,
+                size=0.35)+
+  scale_y_continuous(limits = c(0,1))+
+  scale_x_continuous(limits = c(0,72),
+                     breaks = seq(0,72,12))+
+  scale_color_manual(values = c("Glucose"="#f68a15",
+                                "Pectin"="#008c00",
+                                "Xyloglucan"="#094cc3",
+                                "Pectin_galactan"="#784cc3",
+                                "Arabinogalactan"="#784c23",
+                                "Type II mucin"="#22cac3",
+                                "Inulin"="#ba3a15",
+                                "Laminarin"="#AABC15",
+                                "A_Carbon(NO)"="#C19995",
+                                "Agarose"="#D97775",
+                                "Amylopectin"="#D33775","AStarch"="#344775","Dextran"="#127775"))
 
-a <- read.csv("./Elisa-allbacterialtest.csv", row.names=1)
-group_names <- c( "Con","B.uniformis",  "B.ovatus", "B.xylanisolvens","B.faecis", "B.intestinalis", "B.caccae",
-                  "B.vulgatus", "P.copri", "P.intermedia", "P.mirabilis", "F.varium")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA))+
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),pch=21,alpha=1,size=2.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c(
-    "grey","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
-          "#e95f5c","#e95f5c","#ffdb00","#79ceb8"))+
-     theme_classic()+ scale_y_continuous(limits = c(0, 800), breaks = seq(0, 800, 100))
-
-a <- read.csv("Iga-coating.csv", row.names=1)
-group_names <- c( "Con","B.uniformis",  "B.ovatus", "B.xylanisolvens","B.faecis", "B.intestinalis", "B.caccae",
-                  "B.vulgatus", "P.copri", "P.intermedia", "P.mirabilis", "F.varium")
-a$group <- factor( a$group, level=group_names )
-ggplot(a,aes(group,IgA_coating))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=group),shape=21,stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.35)+
-  scale_fill_manual(values = c(
-    "grey","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8","#5cc3e8",
-          "#e95f5c","#e95f5c","#ffdb00","#79ceb8"))+
-            theme_classic()+
-  scale_y_continuous(limits = c(0, 40), breaks = seq(0,30, 5))
-
-ggplot(data = a ,mapping = aes( x = IgA, y= IgA.Coating)) + 
-  geom_point(size= 2) +
-  stat_smooth(method = "lm")+ 
-  ggpubr::stat_cor(aes(), label.x =200, label.y = 28)+
-  scale_y_continuous(limits = c(0, 30), breaks = seq(0,30, 4))+
-  scale_x_continuous(limits = c(200, 480), breaks = seq(200,480, 100))
-
-c <- read.csv("./Elisa-data3.csv", row.names=1)
-c <- subset(c, c$Group1 %in% c("Con_1","PEC+BU_1" ,  "NOPEC+BU_1"))
-group_names <- c( "Con","PEC+BU" ,  "NOPEC+BU")
-c$Group <- factor(c$Group, level=group_names )
-ggplot(c,aes(Group,IgA_coating))+ 
-  geom_bar(colour="black",stat="summary",fun=mean,position=position_dodge(0.6),width = 0.65,fill='white')+
-  geom_jitter(aes(fill=Group),shape=21,stroke=0.1,alpha=1,size=2.5,
-              width = 0.1, height = 0)+
-  stat_summary(geom = "errorbar",fun.data = 'mean_se', width = 0.3)+
-  scale_fill_manual(values = c(
-    "grey", "#5cc3e8", "#e95f5c","#ffdb00","#79ceb8"))+
-  scale_y_continuous(limits = c(0, 40), breaks = seq(0,30, 5))+
-  theme_prism(palette = "candy_bright",
-              base_fontface = "plain",
-              base_family = "serif", 
-              base_size = 16, 
-              base_line_size = 0.25, 
-              axis_text_angle = 45)
-
-b <- read.csv("./Elisa-data5.csv", row.names=1)
-group_names <- c( "CON",  "PEC", "Starch","XYL","Inulin")
-b$Group <- factor(b$Group, level=group_names )
-
-topbar <- function(x){
-  return(mean(x)+sd(x)/sqrt(length(x)))
-}
-bottombar <- function(x){
-  return(mean(x)-sd(x)/sqrt(length(x)))
-}
-
+b <- read.csv("./Elisa检测.csv", row.names=1)
+ group_names <- c( "CON",  "PEC", "Starch","XYL","Inulin")
+ comparisons <- lapply(group_names[-12], function(group) c(group, "CON"))
+ # comparisons <- combn(group_names, 2, simplify = FALSE) 
+   b$Group <- factor(b$Group, level=group_names )
+   topbar <- function(x){
+     return(mean(x)+sd(x)/sqrt(length(x))) 
+   }
+   bottombar <- function(x){
+     return(mean(x)-sd(x)/sqrt(length(x)))
+   }
 ggplot(b, aes(week, IgA ,group = Group, colour = Group)) +
   geom_point() +
   geom_smooth(method = 'loess')+
@@ -193,27 +173,3 @@ ggplot(b, aes(week, IgA ,group = Group, colour = Group)) +
   theme(legend.position = 'none')+
   stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.62) +
   scale_x_continuous(limits = c(0, 5), breaks = seq(0, 5, 1))
-
-c <- read.csv("./four-weeks-Elisa.csv", row.names=1)
-group_names <- c( "Con","PEC+BU" ,  "NOPEC+BU"  ,     "XYL+BU"   ,  "NOXYL+BU" , 
-                  "Inulin+BU" ,   "NO_Inulin+BU" )
-c$Group <- factor(c$Group, level=group_names )
-topbar <- function(x){
-  return(mean(x)+sd(x)/sqrt(length(x))) 
-}
-bottombar <- function(x){
-  return(mean(x)-sd(x)/sqrt(length(x)))
-}
-ggplot(c,aes(week,IgA,color=Group))+
-  stat_summary(geom = 'line',fun='mean',cex=1)+
-  stat_summary(geom = 'errorbar',
-               fun.min = bottombar,fun.max = topbar,
-               width=0.12,cex=0.8,aes(color=Group))+
-  stat_summary(geom = 'point',fun='mean',aes(fill=Group),
-               size=2.5,pch=21,color='black')+
-  scale_y_continuous(limits = c(230, 400), breaks = seq(0, 400, 50))+
-  scale_x_continuous(limits = c(1, 7.5), breaks = seq(1, 7, 1)) +
-  scale_color_manual(values = c("grey", "#5cc3e8","#3b8000","#0151b8", "#e95f5c","#ffdb00","#79ceb8"))+
-  scale_fill_manual(values = c("grey", "#5cc3e8", "#3b8000","#0151b8","#e95f5c","#ffdb00","#79ceb8"))+  
-  theme() 
-
